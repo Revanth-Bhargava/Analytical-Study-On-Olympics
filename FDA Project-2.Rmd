@@ -1,0 +1,147 @@
+---
+output:
+  pdf_document: default
+  html_document: default
+---
+## Loading Libraries
+```{r}
+library(dplyr)
+library(ggplot2)
+library(tidyverse)
+library(rvest)
+library(magrittr)
+library(ggmap)
+library(stringr)
+```
+  
+## Loading Dataset
+```{r}
+atheletes <- read.csv("./Olympics/athlete_events.csv", stringsAsFactors = F)
+regions <- read.csv("./Olympics/noc_regions.csv", stringsAsFactors = F)
+```
+
+
+```{r}
+df <- atheletes %>%
+  group_by(Season, Sex) %>%
+  summarise(Count = n()) %>%
+  mutate(Percentage = round(Count*100 / sum(Count)))
+```
+
+```{r}
+atheletes %>%
+  group_by(Year, Season) %>%
+  summarise(NumberOfParticipants = n())
+
+atheletes$Age[is.na(atheletes$Age)] <- median(atheletes$Age, na.rm = T)
+```
+
+```{r}
+atheletes <- atheletes %>%
+              left_join(regions, by = "NOC")
+```
+
+```{r}
+Count <- atheletes %>%
+  group_by(Year, Season, region) %>%
+  summarise(NumberOfAthltes = n())
+
+Gold_Winners <- atheletes %>%
+                filter(Medal != "<NA>")%>%
+                group_by(Year, Season, region) %>%
+                summarise(NumberOfMedals = n())
+
+Aggregated <- Count %>% left_join(Gold_Winners, by = c("Year", "Season", "region"))
+
+groupMale <- atheletes %>%
+              filter(Sex == "M") %>%
+              group_by(Year, Season, region) %>%
+              summarise(Number_Of_Men = n())
+
+groupFemale <- atheletes %>%
+              filter(Sex == "F") %>%
+              group_by(Year, Season, region) %>%
+              summarise(Number_Of_Women = n())
+
+group <- groupMale %>%
+          left_join(groupFemale) %>%
+          mutate(Sex_Ratio = Number_Of_Men/Number_Of_Women)
+```
+
+```{r}
+group$Sex_Ratio[is.na(group$Sex_Ratio)] <- 236
+
+Aggregated <- Aggregated %>%
+              left_join(group, by = c("Year", "Season", "region"))
+
+AgeAgg <- atheletes %>%
+                group_by(Year, Season, region) %>%
+                summarise(MedianAge = median(Age, na.rm = T))
+
+HeightAgg <- atheletes %>%
+                group_by(Year, Season, region) %>%
+                summarise(MedianHeight = median(Height, na.rm = T))
+
+WeightAgg <- atheletes %>%
+                group_by(Year, Season, region) %>%
+                summarise(MedianWeight = median(Weight, na.rm = T))
+
+Aggregated <- Aggregated %>%
+              left_join(AgeAgg, by = c("Year", "Season", "region"))
+Aggregated <- Aggregated %>%
+              left_join(HeightAgg, by = c("Year", "Season", "region"))
+Aggregated <- Aggregated %>%
+              left_join(WeightAgg, by = c("Year", "Season", "region"))
+
+Aggregated$NumberOfMedals[is.na(Aggregated$NumberOfMedals)] <- 0
+Aggregated$Sex_Ratio[is.na(Aggregated$Sex_Ratio)] <- 0
+```
+
+## Impact On Medals
+#### Number Of Males
+```{r}
+Aggregated %>% 
+        filter(!is.na(Number_Of_Men)) %>%
+        ggplot(aes(x=Number_Of_Men, y=NumberOfMedals)) +
+        geom_point(col="red")  + geom_smooth(method = "lm", se=TRUE, color="black", aes(group=1)) +
+        theme_minimal() +
+        labs(x = "Number of Male Athletes", y = "Number of Medals")
+```
+  
+#### Number Of Females
+```{r}
+Aggregated %>% 
+        filter(!is.na(Number_Of_Women)) %>%
+        ggplot(aes(x=Number_Of_Women, y=NumberOfMedals)) +
+        geom_point(col="darkblue")  + geom_smooth(method = "lm", se=TRUE, color="black", aes(group=1)) +
+        theme_minimal() +
+        labs(x = "Number of Female Athletes", y = "Number of Medals")
+```
+  
+#### Sex Ratio
+```{r}
+ Aggregated %>% 
+        filter(!is.na(Sex_Ratio)) %>%
+        ggplot(aes(x=Sex_Ratio, y=NumberOfMedals)) +
+        geom_point(col="darkblue")  + geom_smooth(method = "lm", se=TRUE, color="black", aes(group=1)) +
+        theme_minimal() +
+        labs(x = "Sex Ratio", y = "Number of Medals")
+```
+  
+#### Weight
+```{r}
+Aggregated %>% 
+        filter(!is.na(MedianWeight)) %>%
+        ggplot(aes(x=MedianWeight, y=NumberOfMedals)) +
+        geom_point(col="tomato")  + geom_smooth(method = "lm", se=TRUE, color="black", aes(group=1)) +
+        labs(x = "Weight", y = "Number of Medals")
+```
+
+#### Height
+```{r}
+Aggregated %>% 
+        filter(!is.na(MedianHeight)) %>%
+        ggplot(aes(x=MedianHeight, y=NumberOfMedals)) +
+        geom_point(col="steelblue")  + geom_smooth(method = "lm", se=TRUE, color="black", aes(group=1)) +
+        labs(x = "Height", y = "Number of Medals")
+```

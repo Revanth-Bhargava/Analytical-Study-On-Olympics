@@ -1,0 +1,357 @@
+# **An Analytical Study on Olympics**  
+# **Foundations of Data Analytics(J-Component)**  
+  
+### **Done By:-**  
+### **Vinu Kevin Diesel .S.P(19BCE1194)**  
+### **Revanth Bhargava Boyidi(19BCE1177)** 
+  
+### Loading Libraries
+```{r}
+library(dplyr)
+library(ggplot2)
+library(tidyverse)
+library(rvest)
+library(magrittr)
+library(ggmap)
+library(stringr)
+```
+  
+### Loading Dataset
+```{r}
+Ath <- read.csv("./Olympics/athlete_events.csv")
+Reg <- read.csv("./Olympics/noc_regions.csv")
+```
+
+### Data Exploration
+```{r}
+summary(Ath)
+summary(Reg)
+```
+  
+### Sex analysis
+```{r}
+df <- Ath %>%
+  group_by(Season, Sex) %>%
+  summarise(Count = n()) %>%
+  mutate(Percentage = round(Count*100 / sum(Count))) 
+  
+df %>%   
+ggplot(aes(x=Season, y=Percentage, fill = Sex)) + geom_bar(stat='identity',position=position_dodge()) +
+        ggtitle("Male vs Female Participants") +
+        scale_fill_manual("legend",values = c("M" = "orange","F" = "blue"))+
+        geom_label(label=df$Percentage, position = position_dodge(0.9))
+```
+  
+The above bar graph shows the male and female participation percentages all across the globe. During the summer season, females and males have a participation percentage of 27 and 73, respectively, while in the winter season, the percentages are 31 and 69. The percentage of women's participation during summer and winter is almost the same.
+    
+```{r}
+Ath %>%
+  group_by(Year, Season) %>%
+  summarise(NumberOfParticipants = n()) %>%
+  ggplot(aes(x = Year, y = NumberOfParticipants, group = Season)) +
+  geom_line(aes(color = Season)) +
+  geom_point(aes(color = Season)) +
+  scale_color_manual(values = c("Summer" = "green", "Winter" = "red"))+
+  labs(x = "Year", y = "Number of Participants", title = "Male vs Female participants overtime")
+```
+  
+The above line graph shows the participation of players from all over the world over the years. We can see there is a steep increase in both the summer and winter seasons, but the summer’s growth is huge. From this, we can conclude that many countries prefer the participation of their players during the summer season over the winter season.  
+  
+```{r}
+grpM <- Ath %>%
+              filter(Sex == "M") %>%
+              group_by(Year, Season) %>%
+              summarise(Number_Of_Men = n())
+
+grpF <- Ath %>%
+              filter(Sex == "F") %>%
+              group_by(Year, Season) %>%
+              summarise(Number_Of_Women = n())
+
+grp <- grpM %>%
+          left_join(grpF) %>%
+          mutate(Sex_Ratio = Number_Of_Men/Number_Of_Women)
+```
+
+```{r}
+grp %>%
+    ggplot(aes(x = Year, y= Sex_Ratio, group = Season)) +
+    geom_line(aes(color = Season)) +
+    geom_point(aes(color = Season)) +
+    scale_color_manual(values = c("Summer" = "green", "Winter" = "red"))+
+    labs(x = "Year", y = "Sex Ratio", title = "Sex Ratio in Olympics through the years") 
+```
+  
+The above line graph shows the trend of the sex ratio in the Olympics from 1890 to 2010. There was a peak in the 1900s due to little or no female participation in the Olympics, which explains the peak. But as the years passed, the ratio was equal to that of 1950. There were a lot of women who competed in the Olympics.  
+  
+### Age analysis
+```{r}
+Ath$Age[is.na(Ath$Age)] <- median(Ath$Age, na.rm = T)
+cat("The median age of the athletes ", median(Ath$Age))
+cat("\nThe median age of the female athletes ", median(Ath$Age[Ath$Sex == "F"]))
+cat("\nThe median age of the male athletes ", median(Ath$Age[Ath$Sex == "M"]))
+
+```
+  
+```{r}
+Ath %>%
+      ggplot(aes(x=Age, fill=Sex)) +
+      scale_fill_manual(values = c("M" = "orange","F" = "blue"))+
+      geom_density(alpha=0.4) +
+      labs(x = "Age", title = "Distribution of Age by Sex")
+```
+  
+The above area graphs depict the distribution of age by sex in the Olympics. The distribution for both males and females is almost uniform, with peaks at the age of 25. We can see that the peak for the male distribution is high when compared to the female distribution, as the population of male players is significantly greater when compared to female players at the age of 25.  
+    
+```{r}
+Ath %>%
+  group_by(Year, Sex) %>%
+  summarise(Median_Age = median(Age)) %>%
+  ggplot(aes(x = Year, y = Median_Age, Group = Sex)) +
+  geom_line(aes(color = Sex)) +
+  geom_point(aes(color = Sex)) + 
+  scale_color_manual(values = c("M" = "orange", "F" = "blue"))+
+  labs( x = "Year", y = "Medain age of Athletes", title = "Median age of Male and Female athletes over the years")
+```
+  
+The above line graph conveys the trend of the median age of male and female players over the years in the Olympics. Initially, the median age for women was 50, which is quite interesting, and as the years passed by, the median age went down and normalized within the range of 25 to 30.  
+   
+#### Team analysis
+```{r}
+cat("The total number of teams that have paricipated ", length(unique(Ath$Team)))
+```
+
+```{r}
+Ath <- Ath %>%
+              left_join(Reg, by = "NOC")
+```
+
+```{r}
+cat("The total number of National Olympics Committees that have paricipated ", length(unique(Ath$region)))
+```
+
+```{r}
+Ath %>%
+  group_by(Year, Season) %>%
+  summarise(NoOfCountries = length(unique(region))) %>%
+  ggplot(aes(x = Year, y = NoOfCountries, group = Season)) +
+  geom_line(aes(color = Season)) +
+  geom_point(aes(color = Season)) +
+  scale_color_manual(values = c("Summer" = "green", "Winter" = "red"))+
+  labs(x = "Year", y = "Number of countries participated", title = "Number of countries that participated in the Olympics")
+```
+  
+The above line graph shows the trend of participation of countries in the Olympics over the years in both seasons. We can see that there has been an increase in the participation of countries in the Olympics over the years, but the increase in the summer season is significant when compared with the winter season. From this, we can conclude that many countries often opt for the summer season over the winter season.  
+  
+```{r}
+Ath %>%
+  filter(Medal != "<NA>") %>%
+  group_by(region) %>%
+  summarise(med_tal = length(Medal))%>%
+  arrange(desc(med_tal)) %>%
+  ungroup() %>%
+  mutate(region = reorder(region,med_tal)) %>%
+  top_n(10) %>%
+  ggplot(aes(x = region,y = med_tal)) +
+    geom_bar(stat='identity',colour="white", fill = "yellow") +
+    labs(x = 'Country', y = 'Number of Medals')
+```
+  
+The above bar graph compares the total medals won by each country with the others. This shows only the top 10 countries who secured the highest number of medals over the years. We can clearly see that the USA has secured the maximum number of medals in the Olympics, followed by Russia, Germany, UK, France, etc.  
+  
+```{r}
+gld_med <- Ath %>%
+                     filter(Medal == "Gold") %>%
+                     group_by(region) %>%
+                     summarise(med_tal = length(Medal)) %>%
+                     arrange(desc(med_tal)) %>% 
+                     mutate(region = str_trim(region),med_tal = str_trim(med_tal))
+
+slv_med <- Ath %>%
+                     filter(Medal == "Silver") %>%
+                     group_by(region) %>%
+                     summarise(med_tal = length(Medal)) %>%
+                     arrange(desc(med_tal)) %>% 
+                     mutate(region = str_trim(region),med_tal = str_trim(med_tal))
+
+Brz_med <- Ath %>%
+                     filter(Medal == "Bronze") %>%
+                     group_by(region) %>%
+                     summarise(med_tal = length(Medal)) %>%
+                     arrange(desc(med_tal)) %>% 
+                     mutate(region = str_trim(region),med_tal = str_trim(med_tal))
+
+all_med <- Ath %>%
+                     filter(Medal != "<NA>") %>% 
+                     group_by(region) %>%
+                     summarise(med_tal = length(Medal)) %>%
+                     arrange(desc(med_tal)) %>% 
+                     mutate(region = str_trim(region),med_tal = str_trim(med_tal))
+
+all <- Ath %>%
+                      group_by(region) %>%
+                     summarise(med_tal = length(Medal)) %>%
+                     arrange(desc(med_tal)) %>% 
+                     mutate(region = str_trim(region),med_tal = str_trim(med_tal)) %>%
+                     filter(!region %in% all_med$region) %>%
+                     mutate(med_tal = "No Medal")
+
+all_med$med_tal <- "Medal Winners"
+
+med_tal <- rbind(all_med, all)
+
+map.world <- map_data("world")
+
+map.world_joined <- left_join(map.world, med_tal, by ='region')
+
+map.world_joined$med_tal[is.na(map.world_joined$med_tal)] <- "No Participation"
+
+ggplot() +
+  geom_polygon(data = map.world_joined, aes(x = long, y = lat, group = group, fill = med_tal))+
+  scale_fill_manual(values = c("Medal Winners" = "orange","No Participation" = "blue","No Medal" = "red"))+
+  labs(x = " ", y = " ", title = 'Medal winners in the world')
+```
+  
+On the above colour-coded world map, we can see the different regions that won medals, who won no medals, and who had no participation. Even if a region wins one medal, that is counted as a region that won one medal. From the above map, we can see that there are significant regions in South Africa that did not win any medals. This could be due to the poor economy of the country.
+  
+ 
+**Understanding the impact of factors on medal won**   
+  
+### Loading Dataset
+```{r}
+Ath <- read.csv("./Olympics/athlete_events.csv")
+Reg <- read.csv("./Olympics/noc_regions.csv")
+```
+
+
+```{r}
+df <- Ath %>%
+  group_by(Season, Sex) %>%
+  summarise(Count = n()) %>%
+  mutate(Percentage = round(Count*100 / sum(Count)))
+```
+
+```{r}
+Ath %>%
+  group_by(Year, Season) %>%
+  summarise(NumberOfParticipants = n())
+
+Ath$Age[is.na(Ath$Age)] <- median(Ath$Age, na.rm = T)
+```
+
+```{r}
+Ath <- Ath %>%
+              left_join(Reg, by = "NOC")
+```
+
+```{r}
+Count <- Ath %>%
+  group_by(Year, Season, region) %>%
+  summarise(NumberOfAthltes = n())
+
+Gold_Winners <- Ath %>%
+                filter(Medal != "<NA>")%>%
+                group_by(Year, Season, region) %>%
+                summarise(NumberOfMedals = n())
+
+join <- Count %>% left_join(Gold_Winners, by = c("Year", "Season", "region"))
+
+groupMale <- Ath %>%
+              filter(Sex == "M") %>%
+              group_by(Year, Season, region) %>%
+              summarise(Number_Of_Men = n())
+
+groupFemale <- Ath %>%
+              filter(Sex == "F") %>%
+              group_by(Year, Season, region) %>%
+              summarise(Number_Of_Women = n())
+
+group <- groupMale %>%
+          left_join(groupFemale) %>%
+          mutate(Sex_Ratio = Number_Of_Men/Number_Of_Women)
+```
+
+```{r}
+group$Sex_Ratio[is.na(group$Sex_Ratio)] <- 236
+
+join <- join %>%
+              left_join(group, by = c("Year", "Season", "region"))
+
+AgeAgg <- Ath %>%
+                group_by(Year, Season, region) %>%
+                summarise(MedianAge = median(Age, na.rm = T))
+
+HeightAgg <- Ath %>%
+                group_by(Year, Season, region) %>%
+                summarise(MedianHeight = median(Height, na.rm = T))
+
+WeightAgg <- Ath %>%
+                group_by(Year, Season, region) %>%
+                summarise(MedianWeight = median(Weight, na.rm = T))
+
+join <- join %>%
+              left_join(AgeAgg, by = c("Year", "Season", "region"))
+join <- join %>%
+              left_join(HeightAgg, by = c("Year", "Season", "region"))
+join <- join %>%
+              left_join(WeightAgg, by = c("Year", "Season", "region"))
+
+join$NumberOfMedals[is.na(join$NumberOfMedals)] <- 0
+join$Sex_Ratio[is.na(join$Sex_Ratio)] <- 0
+```
+
+#### Number Of Males
+```{r}
+join %>% 
+        filter(!is.na(Number_Of_Men)) %>%
+        ggplot(aes(x=Number_Of_Men, y=NumberOfMedals)) +
+        geom_point(col="darkgreen")  + geom_smooth(method = "lm", se=TRUE, color="black", aes(group=1)) +
+        theme_minimal() +
+        labs(x = "Number of Male Athletes", y = "Number of Medals")
+```
+  
+#### Number Of Females
+```{r}
+join %>% 
+        filter(!is.na(Number_Of_Women)) %>%
+        ggplot(aes(x=Number_Of_Women, y=NumberOfMedals)) +
+        geom_point(col="red")  + geom_smooth(method = "lm", se=TRUE, color="black", aes(group=1)) +
+        theme_minimal() +
+        labs(x = "Number of Female Athletes", y = "Number of Medals")
+```
+  
+From the above scatter plots, we can clearly conclude that as the number of participants increases, the number of medals won by a country also increases. The same is the case for males and females. But the number of male participants is slightly more correlated to the number of medals won than the number of female participants. To gain a better understanding, we examined the relationship between the sex ratio and the number of medals won.  
+  
+#### Sex Ratio
+```{r}
+ join %>% 
+        filter(!is.na(Sex_Ratio)) %>%
+        ggplot(aes(x=Sex_Ratio, y=NumberOfMedals)) +
+        geom_point(col="brown")  + geom_smooth(method = "lm", se=TRUE, color="black", aes(group=1)) +
+        theme_minimal() +
+        labs(x = "Sex Ratio", y = "Number of Medals")
+```
+  
+An equal number of male and female participants has no impact on the number of medals won. But a sufficient number of male and female participants from a country is needed. A country with only male participants will lose the opportunity to participate in sports events meant for females. This will definitely have a huge impact on the total number of medals won.  
+  
+#### Weight
+```{r}
+join %>% 
+        filter(!is.na(MedianWeight)) %>%
+        ggplot(aes(x=MedianWeight, y=NumberOfMedals)) +
+        geom_point(col="black")  + geom_smooth(method = "lm", se=TRUE, color="brown", aes(group=1)) +
+        labs(x = "Weight", y = "Number of Medals")
+```
+  
+Weight doesn't have much impact on the number of medals won.  
+  
+#### Height
+```{r}
+join %>% 
+        filter(!is.na(MedianHeight)) %>%
+        ggplot(aes(x=MedianHeight, y=NumberOfMedals)) +
+        geom_point(col="purple")  + geom_smooth(method = "lm", se=TRUE, color="black", aes(group=1)) +
+        labs(x = "Height", y = "Number of Medals")
+```
+  
+Height doesn't have much impact on the number of medals won.  

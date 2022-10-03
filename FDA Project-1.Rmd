@@ -1,0 +1,189 @@
+---
+output:
+  pdf_document: default
+  html_document: default
+---
+## Loading Libraries
+```{r}
+library(dplyr)
+library(ggplot2)
+library(tidyverse)
+library(rvest)
+library(magrittr)
+library(ggmap)
+library(stringr)
+```
+  
+## Loading Dataset
+```{r}
+atheletes <- read.csv("./Olympics/athlete_events.csv", stringsAsFactors = F)
+regions <- read.csv("./Olympics/noc_regions.csv", stringsAsFactors = F)
+```
+  
+## Data Exploration
+```{r}
+summary(atheletes)
+summary(regions)
+```
+  
+### Sex
+```{r}
+df <- atheletes %>%
+  group_by(Season, Sex) %>%
+  summarise(Count = n()) %>%
+  mutate(Percentage = round(Count*100 / sum(Count))) 
+  
+df %>%   
+ggplot(aes(x=Season, y=Percentage, fill = Sex)) + geom_bar(stat='identity',position=position_dodge()) +
+        ggtitle("Male vs Female Participants") +
+        geom_label(label=df$Percentage, position = position_dodge(0.9))
+```
+  
+```{r}
+atheletes %>%
+  group_by(Year, Season) %>%
+  summarise(NumberOfParticipants = n()) %>%
+  ggplot(aes(x = Year, y = NumberOfParticipants, group = Season)) +
+  geom_line(aes(color = Season)) +
+  geom_point(aes(color = Season)) +
+  labs(x = "Year", y = "Number of Participants", title = "Male vs Female participants overtime")
+```
+  
+```{r}
+groupMale <- atheletes %>%
+              filter(Sex == "M") %>%
+              group_by(Year, Season) %>%
+              summarise(Number_Of_Men = n())
+
+groupFemale <- atheletes %>%
+              filter(Sex == "F") %>%
+              group_by(Year, Season) %>%
+              summarise(Number_Of_Women = n())
+
+group <- groupMale %>%
+          left_join(groupFemale) %>%
+          mutate(Sex_Ratio = Number_Of_Men/Number_Of_Women)
+```
+
+```{r}
+group %>%
+    ggplot(aes(x = Year, y= Sex_Ratio, group = Season)) +
+    geom_line(aes(color = Season)) +
+    geom_point(aes(color = Season)) +
+    labs(x = "Year", y = "Sex Ratio", title = "Sex Ratio in Olympics through the years") 
+```
+  
+## Age
+```{r}
+atheletes$Age[is.na(atheletes$Age)] <- median(atheletes$Age, na.rm = T)
+cat("The median age of the athletes in the modern olympics is", median(atheletes$Age))
+cat("\nThe median age of the male athletes in the modern olympics is", median(atheletes$Age[atheletes$Sex == "M"]))
+cat("\nThe median age of the female athletes in the modern olympics is", median(atheletes$Age[atheletes$Sex == "F"]))
+```
+  
+```{r}
+atheletes %>%
+      ggplot(aes(x=Age, fill=Sex)) +
+      geom_density(alpha=0.4) +
+      labs(x = "Age", title = "Distribution of Age by Sex")
+```
+  
+```{r}
+atheletes %>%
+  group_by(Year, Sex) %>%
+  summarise(Median_Age = median(Age)) %>%
+  ggplot(aes(x = Year, y = Median_Age, Group = Sex)) +
+  geom_line(aes(color = Sex)) +
+  geom_point(aes(color = Sex)) + 
+  labs( x = "Year", y = "Medain age of Athletes", title = "Median age of Male and Female athletes over the years")
+```
+  
+### Team
+```{r}
+cat("The total number of teams that have paricipated in the olympics are", length(unique(atheletes$Team)))
+```
+
+```{r}
+atheletes <- atheletes %>%
+              left_join(regions, by = "NOC")
+```
+
+```{r}
+cat("The total number of National Olympics Committees that have paricipated in the olympics are", length(unique(atheletes$region)))
+```
+
+```{r}
+atheletes %>%
+  group_by(Year, Season) %>%
+  summarise(NoOfCountries = length(unique(region))) %>%
+  ggplot(aes(x = Year, y = NoOfCountries, group = Season)) +
+  geom_line(aes(color = Season)) +
+  geom_point(aes(color = Season)) +
+  labs(x = "Year", y = "Number of countries participated", title = "Number of countries that participated in the Olympics")
+```
+
+```{r}
+atheletes %>%
+  filter(Medal != "<NA>") %>%
+  group_by(region) %>%
+  summarise(Medal_Tally = length(Medal))%>%
+  arrange(desc(Medal_Tally)) %>%
+  ungroup() %>%
+  mutate(region = reorder(region,Medal_Tally)) %>%
+  top_n(10) %>%
+  ggplot(aes(x = region,y = Medal_Tally)) +
+    geom_bar(stat='identity',colour="white", fill = "yellow") +
+    labs(x = 'Country', y = 'Number of Medals')
+```
+
+```{r}
+Gold_Winners <- atheletes %>%
+                     filter(Medal == "Gold") %>%
+                     group_by(region) %>%
+                     summarise(Medal_Tally = length(Medal)) %>%
+                     arrange(desc(Medal_Tally)) %>% 
+                     mutate(region = str_trim(region),Medal_Tally = str_trim(Medal_Tally))
+
+Silver_Winners <- atheletes %>%
+                     filter(Medal == "Silver") %>%
+                     group_by(region) %>%
+                     summarise(Medal_Tally = length(Medal)) %>%
+                     arrange(desc(Medal_Tally)) %>% 
+                     mutate(region = str_trim(region),Medal_Tally = str_trim(Medal_Tally))
+
+Bronze_Winners <- atheletes %>%
+                     filter(Medal == "Bronze") %>%
+                     group_by(region) %>%
+                     summarise(Medal_Tally = length(Medal)) %>%
+                     arrange(desc(Medal_Tally)) %>% 
+                     mutate(region = str_trim(region),Medal_Tally = str_trim(Medal_Tally))
+
+AllMedals <- atheletes %>%
+                     filter(Medal != "<NA>") %>% 
+                     group_by(region) %>%
+                     summarise(Medal_Tally = length(Medal)) %>%
+                     arrange(desc(Medal_Tally)) %>% 
+                     mutate(region = str_trim(region),Medal_Tally = str_trim(Medal_Tally))
+
+All <- atheletes %>%
+                      group_by(region) %>%
+                     summarise(Medal_Tally = length(Medal)) %>%
+                     arrange(desc(Medal_Tally)) %>% 
+                     mutate(region = str_trim(region),Medal_Tally = str_trim(Medal_Tally)) %>%
+                     filter(!region %in% AllMedals$region) %>%
+                     mutate(Medal_Tally = "No Medal")
+
+AllMedals$Medal_Tally <- "Medal Winners"
+
+Medal_Tally <- rbind(AllMedals, All)
+
+map.world <- map_data("world")
+
+map.world_joined <- left_join(map.world, Medal_Tally, by ='region')
+
+map.world_joined$Medal_Tally[is.na(map.world_joined$Medal_Tally)] <- "No Participation/No Data"
+
+ggplot() +
+  geom_polygon(data = map.world_joined, aes(x = long, y = lat, group = group, fill = Medal_Tally)) +
+  labs(x = " ", y = " ", title = 'Medal winners in the world')
+```
